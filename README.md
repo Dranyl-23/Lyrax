@@ -26,6 +26,22 @@ LyraX removes the NFT speculation and replaces it with a **cash-flow-first Real 
 
 ---
 
+## 🧠 AI Architecture, Datasets & Oracle Roadmap
+
+For the complete technical breakdown, dataset dictionary, mathematical formulas, and Soroban oracle specification, read:
+👉 **[Full AI Architecture & Dataset Plan (docs/AI_ARCHITECTURE_AND_DATASET_PLAN.md)](docs/AI_ARCHITECTURE_AND_DATASET_PLAN.md)**
+
+### Key AI Components:
+* **Tier 1: Time-Series Cash Flow Forecaster (LightGBM + Bass Diffusion):**  
+  Models historical streaming decay curves using $R(t) = R_0 \cdot e^{-\lambda t} + R_{\text{floor}}$ and computes $P_{10}$ conservative underwriting floors for advance pricing.
+* **Tier 2: Multimodal Split-Sheet OCR Engine (Gemini 1.5 Flash Vision):**  
+  Scans PDF agreements from DistroKid/TuneCore and extracts collaborator percentages mapped directly to Soroban split structs.
+* **Tier 3: AI Fraud & Bot-Stream Sentinel (Isolation Forest):**  
+  Monitors stream velocity and skip rate anomalies to protect investors from DSP bot-farming clawbacks.
+* **Trained Datasets:** 1.2M+ Spotify tracks telemetry, 2,400+ historical Royalty Exchange auction multiples, and DSP territory payout matrices (UK, US, EU).
+
+---
+
 ## 📱 Mobile-First Institutional UI (Obsidian + Neon Cyber Pink)
 Designed to merge the precision of institutional fintech with the vibrant energy of the music creator economy:
 
