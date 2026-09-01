@@ -7,8 +7,10 @@ import 'widgets/circular_gauge_widget.dart';
 import 'widgets/mini_bar_chart_widget.dart';
 import 'widgets/cash_flow_line_chart.dart';
 import 'widgets/catalog_position_tile.dart';
+import 'widgets/app_side_drawer.dart';
+import 'widgets/filter_bottom_sheet.dart';
 
-class HomeView extends StatelessWidget {
+class HomeView extends StatefulWidget {
   final VoidCallback? onOpenAiScanner;
   final VoidCallback? onOpenStreamView;
 
@@ -19,9 +21,86 @@ class HomeView extends StatelessWidget {
   });
 
   @override
+  State<HomeView> createState() => _HomeViewState();
+}
+
+class _HomeViewState extends State<HomeView> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  bool _isCreatorMode = true;
+  String _selectedCurrency = 'USD';
+  FilterCriteria _currentFilter = FilterCriteria.defaultCriteria;
+
+  List<CatalogPosition> get _filteredPositions {
+    return CatalogPosition.mockPositions.where((pos) {
+      // Genre filter
+      if (_currentFilter.genre != 'All') {
+        final g = _currentFilter.genre.toLowerCase();
+        final match = pos.artist.toLowerCase().contains(g) ||
+            pos.title.toLowerCase().contains(g) ||
+            (g.contains('garage') && pos.artist.contains('UKG'));
+        if (!match) return false;
+      }
+      // Risk filter
+      if (_currentFilter.riskGrade != 'All') {
+        if (_currentFilter.riskGrade == 'Grade A+' && pos.roiPercent < 7.0) return false;
+      }
+      // Min APY filter
+      if (pos.roiPercent < (_currentFilter.minApy - 3.0)) return false;
+
+      return true;
+    }).toList();
+  }
+
+  void _openFilterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => FilterBottomSheet(
+        currentCriteria: _currentFilter,
+        onApply: (newCriteria) {
+          setState(() => _currentFilter = newCriteria);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Applied filters: ${_currentFilter.genre} • Min ${_currentFilter.minApy.toStringAsFixed(1)}% APY'),
+              backgroundColor: AppColors.primaryPink,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String get _currencySymbol => _selectedCurrency == 'USD' ? '\$' : (_selectedCurrency == 'GBP' ? '£' : '€');
+
+  @override
   Widget build(BuildContext context) {
+    final displayedList = _filteredPositions;
+    final bool hasActiveFilter = _currentFilter.genre != 'All' || _currentFilter.riskGrade != 'All' || _currentFilter.minApy > 8.0;
+
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: AppColors.background,
+      drawer: AppSideDrawer(
+        isCreatorMode: _isCreatorMode,
+        onModeChanged: (val) {
+          setState(() => _isCreatorMode = val);
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(val ? 'Switched to Creator Mode (Artist Portal)' : 'Switched to Investor Mode (Liquidity Backer)'),
+              backgroundColor: AppColors.primaryPink,
+            ),
+          );
+        },
+        selectedCurrency: _selectedCurrency,
+        onCurrencyChanged: (val) {
+          setState(() => _selectedCurrency = val);
+          Navigator.pop(context);
+        },
+        onOpenAiScanner: widget.onOpenAiScanner,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -33,15 +112,19 @@ class HomeView extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.cardSurface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.cardBorder),
+                  // Hamburger Button (Opens Side Drawer)
+                  GestureDetector(
+                    onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppColors.cardSurface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.cardBorder),
+                      ),
+                      child: const Icon(Icons.menu, size: 20, color: Colors.white),
                     ),
-                    child: const Icon(Icons.menu, size: 20, color: Colors.white),
                   ),
                   Expanded(
                     child: Padding(
@@ -51,10 +134,10 @@ class HomeView extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              const Flexible(
+                              Flexible(
                                 child: Text(
-                                  'Royalty Overview',
-                                  style: TextStyle(
+                                  _isCreatorMode ? 'Creator Treasury' : 'Investor Portfolio',
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 17,
                                     fontWeight: FontWeight.w800,
@@ -83,9 +166,11 @@ class HomeView extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 2),
-                          const Text(
-                            'Real-time AI catalog underwriting and instant streaming payouts',
-                            style: TextStyle(
+                          Text(
+                            _isCreatorMode
+                                ? 'Luna Ray • Spotify Connected (142.5K Listeners)'
+                                : 'Real-time multi-DSP catalog underwriting & micro-payouts',
+                            style: const TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 10,
                             ),
@@ -96,19 +181,61 @@ class HomeView extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.cardSurface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.cardBorder),
+                  // Tune / Filter Button (Opens Filter Bottom Sheet)
+                  GestureDetector(
+                    onTap: _openFilterBottomSheet,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: hasActiveFilter ? AppColors.primaryPink.withValues(alpha: 0.2) : AppColors.cardSurface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: hasActiveFilter ? AppColors.primaryPink : AppColors.cardBorder,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.tune,
+                        size: 18,
+                        color: hasActiveFilter ? AppColors.primaryPink : Colors.white,
+                      ),
                     ),
-                    child: const Icon(Icons.tune, size: 18, color: Colors.white),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
+
+              // Active Filter Bar (if applied)
+              if (hasActiveFilter) ...[
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryPink.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.primaryPink.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.filter_alt, size: 11, color: AppColors.primaryPink),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Filters: ${_currentFilter.genre} • ${_currentFilter.riskGrade} • Min ${_currentFilter.minApy.toStringAsFixed(0)}% APY',
+                            style: const TextStyle(color: AppColors.primaryPink, fontSize: 9.5, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: () => setState(() => _currentFilter = FilterCriteria.defaultCriteria),
+                      child: const Text('Clear', style: TextStyle(color: AppColors.textMuted, fontSize: 10, decoration: TextDecoration.underline)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
 
               // 2x2 Metric Grid
               Row(
@@ -116,9 +243,9 @@ class HomeView extends StatelessWidget {
                   // Card 1: Total Exposure
                   Expanded(
                     child: MetricCard(
-                      label: 'TOTAL EXPOSURE',
-                      value: '\$148.5M',
-                      subtitle: 'USD Equivalent',
+                      label: _isCreatorMode ? 'CATALOG VALUATION' : 'TOTAL EXPOSURE',
+                      value: '$_currencySymbol 148.5M',
+                      subtitle: '$_selectedCurrency Equivalent',
                       visualContent: const SparklineWidget(
                         data: [12, 14, 13, 17, 19, 18, 22, 25, 23, 29],
                         height: 36,
@@ -141,7 +268,7 @@ class HomeView extends StatelessWidget {
                       ),
                       deltaText: '98.6% model confidence',
                       isPositive: true,
-                      onTap: onOpenAiScanner,
+                      onTap: widget.onOpenAiScanner,
                     ),
                   ),
                 ],
@@ -152,8 +279,8 @@ class HomeView extends StatelessWidget {
                   // Card 3: Est. Royalty Yield
                   Expanded(
                     child: MetricCard(
-                      label: 'EST. STREAM YIELD',
-                      value: '\$2,842.10',
+                      label: _isCreatorMode ? 'ROYALTIES EARNED' : 'EST. STREAM YIELD',
+                      value: '$_currencySymbol 2,842.10',
                       subtitle: 'Stellar USDC Settled',
                       visualContent: const SparklineWidget(
                         data: [15, 17, 16, 20, 19, 23, 26, 25, 29, 32],
@@ -162,7 +289,7 @@ class HomeView extends StatelessWidget {
                       ),
                       deltaText: '8.7% vs last 24h',
                       isPositive: true,
-                      onTap: onOpenStreamView,
+                      onTap: widget.onOpenStreamView,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -193,10 +320,10 @@ class HomeView extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Royalty Positions',
-                      style: TextStyle(
+                      _isCreatorMode ? 'Your Tokenized Catalogs' : 'Royalty Positions',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -207,8 +334,8 @@ class HomeView extends StatelessWidget {
                   GestureDetector(
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Viewing all 18 tokenized catalogs on Stellar Soroban'),
+                        SnackBar(
+                          content: Text('Viewing all ${displayedList.length} tokenized catalogs on Stellar Soroban'),
                           backgroundColor: AppColors.cardSurfaceElevated,
                         ),
                       );
@@ -220,14 +347,14 @@ class HomeView extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppColors.cardBorder),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Text(
-                            'View All',
-                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                            'View All (${displayedList.length})',
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
                           ),
-                          SizedBox(width: 2),
-                          Icon(Icons.chevron_right, size: 14, color: AppColors.textMuted),
+                          const SizedBox(width: 2),
+                          const Icon(Icons.chevron_right, size: 14, color: AppColors.textMuted),
                         ],
                       ),
                     ),
@@ -291,11 +418,22 @@ class HomeView extends StatelessWidget {
                         ),
                       ),
                       const Divider(color: AppColors.cardBorder, height: 1),
-                      // List of positions
-                      ...CatalogPosition.mockPositions.map((pos) => CatalogPositionTile(
-                            position: pos,
-                            onTap: () => _showCatalogDetailSheet(context, pos),
-                          )),
+                      // List of filtered positions
+                      if (displayedList.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(
+                            child: Text(
+                              'No catalogs match this filter criteria',
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                            ),
+                          ),
+                        )
+                      else
+                        ...displayedList.map((pos) => CatalogPositionTile(
+                              position: pos,
+                              onTap: () => _showCatalogDetailSheet(context, pos),
+                            )),
                     ],
                   ),
                 ),
@@ -325,9 +463,12 @@ class HomeView extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  pos.title,
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    pos.title,
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
