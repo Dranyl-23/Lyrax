@@ -32,19 +32,22 @@ class AppSideDrawer extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        width: 38,
-                        height: 38,
+                        width: 42,
+                        height: 42,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: AppColors.pinkGradient,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.primaryPink.withValues(alpha: 0.5)),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primaryPink.withValues(alpha: 0.5),
+                              color: AppColors.primaryPink.withValues(alpha: 0.3),
                               blurRadius: 10,
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.graphic_eq, color: Colors.white, size: 20),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(9),
+                          child: Image.asset('assets/Lyrax-logo.png', fit: BoxFit.cover),
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Column(

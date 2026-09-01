@@ -114,18 +114,39 @@ class _HomeViewState extends State<HomeView> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Hamburger Button (Opens Side Drawer)
+                  // Hamburger / Logo Button (Opens Side Drawer)
                   GestureDetector(
                     onTap: () => _scaffoldKey.currentState?.openDrawer(),
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: AppColors.cardSurface,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.cardBorder),
-                      ),
-                      child: const Icon(Icons.menu, size: 20, color: Colors.white),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: AppColors.cardSurface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.primaryPink.withValues(alpha: 0.5)),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(9),
+                            child: Image.asset('assets/Lyrax-logo.png', fit: BoxFit.cover),
+                          ),
+                        ),
+                        Positioned(
+                          right: -3,
+                          bottom: -3,
+                          child: Container(
+                            padding: const EdgeInsets.all(2.5),
+                            decoration: BoxDecoration(
+                              color: AppColors.cardSurfaceElevated,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.cardBorder, width: 0.5),
+                            ),
+                            child: const Icon(Icons.menu, size: 9, color: Colors.white),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   Expanded(
