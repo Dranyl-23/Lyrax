@@ -72,4 +72,57 @@ class StellarService {
       'explorerUrl': 'https://stellar.expert/explorer/testnet/tx/$simulatedTxHash',
     };
   }
+
+  /// Invests USDC into a catalog royalty vault on Soroban
+  Map<String, dynamic> investInCatalog({
+    required String catalogId,
+    required double usdcAmount,
+    required double catalogTotalValuation,
+    required double apyPercent,
+  }) {
+    if (usdcAmount > usdcBalance) {
+      usdcAmount = usdcBalance; // Cap to balance
+    }
+    usdcBalance = max(0.0, usdcBalance - usdcAmount);
+
+    final random = Random();
+    final String simulatedTxHash = List.generate(
+      64,
+      (_) => random.nextInt(16).toRadixString(16),
+    ).join();
+
+    final double sharePercent = (usdcAmount / catalogTotalValuation) * 100;
+    final double estimatedDailyYield = (usdcAmount * (apyPercent / 100)) / 365;
+
+    return {
+      'txHash': simulatedTxHash,
+      'catalogId': catalogId,
+      'investedUsdc': usdcAmount,
+      'shareTokensMinted': (usdcAmount * 10).round(), // 10 SEP-41 shares per dollar
+      'ownershipPercent': sharePercent,
+      'estimatedDailyYield': estimatedDailyYield,
+      'apyPercent': apyPercent,
+      'explorerUrl': 'https://stellar.expert/explorer/testnet/tx/$simulatedTxHash',
+      'contractExplorerUrl': 'https://stellar.expert/explorer/testnet/contract/CC3L9XA4LYRAXTESTNET',
+    };
+  }
+
+  /// Draws cash advance to bank or cash via Stellar Anchor (SEP-24 / MoneyGram)
+  Map<String, dynamic> drawCashAdvanceViaAnchor({
+    required double advanceAmountUsd,
+    required String offRampMethod, // 'UK Faster Payments / SEPA', 'MoneyGram Cash Pickup'
+  }) {
+    final random = Random();
+    final String anchorTxId = 'ANCHOR-${random.nextInt(999999).toString().padLeft(6, '0')}';
+
+    return {
+      'anchorTxId': anchorTxId,
+      'amount': advanceAmountUsd,
+      'method': offRampMethod,
+      'fee': 0.0, // Subsidized
+      'settlementTimeSeconds': 2.4,
+      'status': 'SETTLED_TO_BANK',
+      'stellarReference': 'SEP-24 Anchor Settlement Finalized',
+    };
+  }
 }

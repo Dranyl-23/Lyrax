@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/catalog_position.dart';
 import 'widgets/metric_card.dart';
@@ -9,6 +10,7 @@ import 'widgets/cash_flow_line_chart.dart';
 import 'widgets/catalog_position_tile.dart';
 import 'widgets/app_side_drawer.dart';
 import 'widgets/filter_bottom_sheet.dart';
+import 'widgets/invest_catalog_modal.dart';
 
 class HomeView extends StatefulWidget {
   final VoidCallback? onOpenAiScanner;
@@ -508,24 +510,109 @@ class _HomeViewState extends State<HomeView> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Streaming micro-payouts triggered for ${pos.title} on Stellar Testnet!'),
-                    backgroundColor: AppColors.primaryPink,
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryPink,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 44),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            const SizedBox(height: 14),
+
+            // Stellar Expert Contract Link Box
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.cardSurfaceElevated,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.cardBorder),
               ),
-              child: const Text('Execute Soroban Micro-Dividend Payout', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.token, size: 14, color: AppColors.primaryPink),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Soroban: ${pos.sorobanContractId}',
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontFamily: 'monospace'),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: 'https://stellar.expert/explorer/testnet/contract/${pos.sorobanContractId}'));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Copied Stellar Expert Explorer URL for ${pos.title}!'),
+                          backgroundColor: AppColors.primaryPink,
+                        ),
+                      );
+                    },
+                    child: const Row(
+                      children: [
+                        Text('Stellar.Expert', style: TextStyle(color: AppColors.primaryPink, fontSize: 10, fontWeight: FontWeight.bold)),
+                        SizedBox(width: 3),
+                        Icon(Icons.open_in_new, size: 11, color: AppColors.primaryPink),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            // PRIMARY ACTION: Buy Royalty Shares (Invest USDC)
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (investCtx) => InvestCatalogModal(
+                      position: pos,
+                      onInvestmentSuccess: () {
+                        setState(() {}); // Refresh balances
+                      },
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryPink,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_chart, size: 16),
+                    SizedBox(width: 8),
+                    Text('Buy Royalty Shares (Invest USDC)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // SECONDARY ACTION: Simulate Payout
+            SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Simulated Soroban micro-dividend payout for ${pos.title} on Stellar Testnet!'),
+                      backgroundColor: AppColors.cardSurfaceElevated,
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.cardBorderGlowing),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Simulate Soroban Micro-Dividend', style: TextStyle(fontSize: 11.5)),
+              ),
             ),
           ],
         ),

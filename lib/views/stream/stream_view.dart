@@ -16,9 +16,11 @@ class _StreamViewState extends State<StreamView> {
   Timer? _tickerTimer;
 
   double _totalStreamedUsdc = 2842.10;
+  double _unclaimedYieldUsdc = 14.85;
   int _totalStreamsCount = 748190;
   final int _activeListeners = 14250;
   bool _isStreaming = true;
+  int _speedMultiplier = 1; // 1, 10, 100
 
   final List<Map<String, dynamic>> _liveTransactions = [];
 
@@ -34,13 +36,25 @@ class _StreamViewState extends State<StreamView> {
     super.dispose();
   }
 
+  void _setSpeed(int speed) {
+    setState(() => _speedMultiplier = speed);
+    _startLiveStreamTicker();
+  }
+
   void _startLiveStreamTicker() {
-    _tickerTimer = Timer.periodic(const Duration(milliseconds: 1600), (timer) {
+    _tickerTimer?.cancel();
+
+    int intervalMs = 1600;
+    if (_speedMultiplier == 10) intervalMs = 280;
+    if (_speedMultiplier == 100) intervalMs = 60;
+
+    _tickerTimer = Timer.periodic(Duration(milliseconds: intervalMs), (timer) {
       if (!mounted || !_isStreaming) return;
 
       final random = Random();
-      final double microAmount = 0.04 + (random.nextDouble() * 0.08);
-      final int newStreams = 12 + random.nextInt(18);
+      final double baseMicro = 0.04 + (random.nextDouble() * 0.08);
+      final double microAmount = baseMicro * (_speedMultiplier == 100 ? 3.5 : (_speedMultiplier == 10 ? 1.5 : 1.0));
+      final int newStreams = (12 + random.nextInt(18)) * _speedMultiplier;
 
       final tx = _stellarService.generateMicroPayoutTransaction(
         catalogId: 'LUNA-EP-01',
@@ -50,13 +64,37 @@ class _StreamViewState extends State<StreamView> {
 
       setState(() {
         _totalStreamedUsdc += microAmount;
+        _unclaimedYieldUsdc += (microAmount * 0.35); // 35% pool share to user
         _totalStreamsCount += newStreams;
         _liveTransactions.insert(0, tx);
-        if (_liveTransactions.length > 20) {
+        if (_liveTransactions.length > 25) {
           _liveTransactions.removeLast();
         }
       });
     });
+  }
+
+  void _claimYield() {
+    if (_unclaimedYieldUsdc <= 0.01) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No streaming yield accumulated yet!')),
+      );
+      return;
+    }
+
+    final claimedAmount = _unclaimedYieldUsdc;
+    setState(() {
+      _stellarService.usdcBalance += claimedAmount;
+      _unclaimedYieldUsdc = 0.0;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Claimed ++\$${claimedAmount.toStringAsFixed(3)} USDC directly to Stellar Testnet Wallet!'),
+        backgroundColor: AppColors.primaryPink,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -128,14 +166,84 @@ class _StreamViewState extends State<StreamView> {
               ),
               const SizedBox(height: 16),
 
+              // STREAM SURGE DEMO SPEED CONTROLS
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.cardSurfaceElevated,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _speedMultiplier > 1 ? AppColors.primaryPink : AppColors.cardBorder,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _speedMultiplier == 100 ? Icons.whatshot : Icons.speed,
+                          size: 16,
+                          color: _speedMultiplier == 100 ? Colors.orangeAccent : AppColors.primaryPink,
+                        ),
+                        const SizedBox(width: 6),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _speedMultiplier == 100
+                                  ? 'TikTok Viral Surge! 🔥'
+                                  : (_speedMultiplier == 10 ? 'Playlist Momentum 🚀' : 'Real-Time DSP Stream Speed'),
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              _speedMultiplier == 100 ? 'Rapid-fire micro-settlements' : 'Simulating live streams',
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 9),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [1, 10, 100].map((s) {
+                        final bool isCurrent = _speedMultiplier == s;
+                        return GestureDetector(
+                          onTap: () => _setSpeed(s),
+                          child: Container(
+                            margin: const EdgeInsets.only(left: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isCurrent ? AppColors.primaryPink : AppColors.cardSurface,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isCurrent ? AppColors.primaryPink : AppColors.cardBorder,
+                              ),
+                            ),
+                            child: Text(
+                              '${s}x',
+                              style: TextStyle(
+                                color: isCurrent ? Colors.white : AppColors.textSecondary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
               // Live Cumulative Ticker Banner
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF1E1325), Color(0xFF111118)],
+                    colors: [Color(0xFF221326), Color(0xFF111118)],
                   ),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: AppColors.cardBorderGlowing, width: 1.5),
@@ -158,20 +266,85 @@ class _StreamViewState extends State<StreamView> {
                         letterSpacing: 0.8,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       '\$${_totalStreamedUsdc.toStringAsFixed(4)} USDC',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 28,
+                        fontSize: 27,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       '${_totalStreamsCount.toString()} verified streams • $_activeListeners concurrent listeners',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 10.5),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // UNCLAIMED YIELD & CLAIM BUTTON
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.cardSurfaceElevated,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.primaryPink.withValues(alpha: 0.4)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'YOUR ACCUMULATED YIELD',
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 9.5, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 2),
+                            Text('Ready to claim to wallet', style: TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+                          ],
+                        ),
+                        Text(
+                          '+\$${_unclaimedYieldUsdc.toStringAsFixed(4)} USDC',
+                          style: const TextStyle(
+                            color: AppColors.primaryPink,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: ElevatedButton(
+                        onPressed: _claimYield,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryPink,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          elevation: 4,
+                          shadowColor: AppColors.primaryPink.withValues(alpha: 0.4),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.download, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Claim \$${_unclaimedYieldUsdc.toStringAsFixed(2)} USDC to Wallet',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),

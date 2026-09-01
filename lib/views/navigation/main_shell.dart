@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../home/home_view.dart';
+import '../analytics/analytics_view.dart';
 import '../ai_scanner/ai_scanner_view.dart';
 import '../stream/stream_view.dart';
 import '../wallet/wallet_view.dart';
@@ -23,10 +24,7 @@ class _MainShellState extends State<MainShell> {
         onOpenAiScanner: () => setState(() => _currentIndex = 2),
         onOpenStreamView: () => setState(() => _currentIndex = 3),
       ),
-      HomeView(
-        onOpenAiScanner: () => setState(() => _currentIndex = 2),
-        onOpenStreamView: () => setState(() => _currentIndex = 3),
-      ), // Analytics view uses HomeView with chart focus
+      const AnalyticsView(),
       const AIScannerView(),
       const StreamView(),
       const WalletView(),

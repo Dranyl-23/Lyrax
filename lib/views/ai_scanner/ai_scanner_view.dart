@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/ai_underwrite_result.dart';
 import '../../services/ai_underwriting_service.dart';
+import '../../services/stellar_service.dart';
 import '../home/widgets/circular_gauge_widget.dart';
 
 class AIScannerView extends StatefulWidget {
@@ -205,7 +206,32 @@ class _AIScannerViewState extends State<AIScannerView> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
+                    // OCR Split Sheet Upload Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 38,
+                      child: OutlinedButton(
+                        onPressed: _showOcrScanModal,
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.cardBorderGlowing),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.document_scanner, size: 15, color: AppColors.primaryPink),
+                            SizedBox(width: 8),
+                            Text(
+                              'Scan & Parse Split Sheet PDF (OCR AI)',
+                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       height: 44,
@@ -393,10 +419,33 @@ class _AIScannerViewState extends State<AIScannerView> {
                 ),
                 const SizedBox(height: 16),
 
+                // DRAW ADVANCE VIA STELLAR ANCHOR / MONEYGRAM
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () => _showAnchorCashDrawModal(_result!.fairAdvanceUsd),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryPink,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.account_balance, size: 16),
+                        SizedBox(width: 8),
+                        Text('Draw Advance to Bank / Cash (Stellar Anchor)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
                 // Deploy Soroban Contract Button
                 SizedBox(
                   width: double.infinity,
-                  height: 46,
+                  height: 44,
                   child: OutlinedButton(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -427,6 +476,40 @@ class _AIScannerViewState extends State<AIScannerView> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showOcrScanModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _OcrScanningModal(
+        onScanComplete: (scannedArtist, scannedTitle, scannedListeners, scannedSplits) {
+          setState(() {
+            _artistController.text = scannedArtist;
+            _titleController.text = scannedTitle;
+            _listenersController.text = scannedListeners;
+          });
+          _runAnalysis(simulate: true);
+        },
+      ),
+    );
+  }
+
+  void _showAnchorCashDrawModal(double advanceAmount) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.cardSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _AnchorCashDrawModal(
+        advanceAmount: advanceAmount,
       ),
     );
   }
@@ -477,3 +560,531 @@ class _AIScannerViewState extends State<AIScannerView> {
     );
   }
 }
+
+/// Simulated OCR Split Sheet Scanner Modal
+class _OcrScanningModal extends StatefulWidget {
+  final Function(String artist, String title, String listeners, List<String> splits) onScanComplete;
+
+  const _OcrScanningModal({required this.onScanComplete});
+
+  @override
+  State<_OcrScanningModal> createState() => _OcrScanningModalState();
+}
+
+class _OcrScanningModalState extends State<_OcrScanningModal> {
+  int _scanStep = 0;
+  bool _isFinished = false;
+
+  final List<String> _scanSteps = [
+    'Parsing DistroKid royalty split agreement (PDF)...',
+    'Scanning collaborator signatures & ISRC metadata...',
+    'Extracting: 60% Artist, 30% Investor Pool, 10% Producer...',
+    'Validating non-exclusive territory & recoupment terms...',
+    'Soroban smart contract parameters generated successfully!',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _startScanSimulation();
+  }
+
+  Future<void> _startScanSimulation() async {
+    for (int i = 0; i < _scanSteps.length; i++) {
+      await Future.delayed(const Duration(milliseconds: 650));
+      if (mounted) {
+        setState(() {
+          _scanStep = i;
+          if (i == _scanSteps.length - 1) {
+            _isFinished = true;
+          }
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      decoration: const BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.cardBorder,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.document_scanner, color: AppColors.primaryPink, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'AI Split Sheet OCR Engine',
+                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryPink.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('GEMINI MULTIMODAL', style: TextStyle(color: AppColors.primaryPink, fontSize: 8.5, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Scanning Radar Box
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.cardSurfaceElevated,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.cardBorderGlowing),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primaryPink.withValues(alpha: 0.15),
+                        ),
+                        child: Icon(
+                          _isFinished ? Icons.check_circle : Icons.document_scanner,
+                          color: AppColors.primaryPink,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _isFinished ? 'Contract Verified' : 'AI Processing Document...',
+                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _scanSteps[_scanStep],
+                              style: const TextStyle(color: AppColors.primaryPink, fontSize: 10.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: (_scanStep + 1) / _scanSteps.length,
+                      backgroundColor: AppColors.cardBorder,
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryPink),
+                      minHeight: 4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Scanned Splits Preview
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.cardSurfaceElevated,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('DETECTED SPLIT MAP (SOROBAN COMPATIBLE)', style: TextStyle(color: AppColors.textMuted, fontSize: 9.5, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Luna Ray (Master Rights)', style: TextStyle(color: Colors.white, fontSize: 11)),
+                      Text('60% Share', style: TextStyle(color: AppColors.primaryPink, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('LyraX Investor Vault (Collateral)', style: TextStyle(color: Colors.white, fontSize: 11)),
+                      Text('30% Share', style: TextStyle(color: AppColors.primaryPink, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Kairo Beats (Production / Mix)', style: TextStyle(color: Colors.white, fontSize: 11)),
+                      Text('10% Share', style: TextStyle(color: AppColors.primaryPink, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Apply Button
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: _isFinished
+                    ? () {
+                        widget.onScanComplete(
+                          'Luna Ray (Verified OCR)',
+                          'Midnight Echoes (Deluxe)',
+                          '184000',
+                          ['60%', '30%', '10%'],
+                        );
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Populated catalog parameters from scanned split sheet!'),
+                            backgroundColor: AppColors.primaryPink,
+                          ),
+                        );
+                      }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryPink,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: Text(
+                  _isFinished ? 'Apply Scanned Splits to Soroban' : 'AI Extracting Document...',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Stellar Anchor Cash Draw Modal (SEP-24 / MoneyGram)
+class _AnchorCashDrawModal extends StatefulWidget {
+  final double advanceAmount;
+
+  const _AnchorCashDrawModal({required this.advanceAmount});
+
+  @override
+  State<_AnchorCashDrawModal> createState() => _AnchorCashDrawModalState();
+}
+
+class _AnchorCashDrawModalState extends State<_AnchorCashDrawModal> {
+  final _stellarService = StellarService();
+  int _selectedMethodIndex = 0;
+  bool _isProcessing = false;
+  Map<String, dynamic>? _drawResult;
+
+  final List<Map<String, dynamic>> _methods = [
+    {
+      'title': 'UK Faster Payments / SEPA Bank Transfer',
+      'desc': 'Direct wire to UK Bank (Sort code: 60-00-01 • Acc: ***892)',
+      'icon': Icons.account_balance,
+      'speed': 'Instant (2.4s)',
+    },
+    {
+      'title': 'MoneyGram Cash Pickup',
+      'desc': 'Pick up physical cash at 400k+ global locations with ID',
+      'icon': Icons.local_atm,
+      'speed': 'Ready in 5 mins',
+    },
+    {
+      'title': 'Stellar Self-Custody USDC Wallet',
+      'desc': 'Hold directly on Stellar Testnet address',
+      'icon': Icons.wallet,
+      'speed': 'Instant (2.8s)',
+    },
+  ];
+
+  Future<void> _executeCashDraw() async {
+    setState(() => _isProcessing = true);
+    await Future.delayed(const Duration(milliseconds: 1400));
+
+    final res = _stellarService.drawCashAdvanceViaAnchor(
+      advanceAmountUsd: widget.advanceAmount,
+      offRampMethod: _methods[_selectedMethodIndex]['title'],
+    );
+
+    if (mounted) {
+      setState(() {
+        _isProcessing = false;
+        _drawResult = res;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      decoration: const BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBorder,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              if (_drawResult != null) ...[
+                Center(
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primaryPink.withValues(alpha: 0.15),
+                          border: Border.all(color: AppColors.primaryPink),
+                        ),
+                        child: const Icon(Icons.check, color: AppColors.primaryPink, size: 28),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Cash Advance Disbursed via Stellar Anchor!',
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '\$${widget.advanceAmount.toStringAsFixed(0)} USDC Settled to ${_methods[_selectedMethodIndex]['title'].toString().split('/').first.trim()}',
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardSurfaceElevated,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: Column(
+                          children: [
+                            _receiptRow('Anchor Reference', _drawResult!['anchorTxId']),
+                            const SizedBox(height: 6),
+                            _receiptRow('Settlement Speed', '${_drawResult!['settlementTimeSeconds']} seconds'),
+                            const SizedBox(height: 6),
+                            _receiptRow('Network Fee', '\$0.00 (Stellar Subsidized)'),
+                            const SizedBox(height: 6),
+                            _receiptRow('Protocol', 'SEP-24 Interactive Anchor'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryPink,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: const Text('Done', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Stellar Anchor Cash-Out',
+                          style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Instant fiat off-ramp via SEP-24 / MoneyGram',
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 10.5),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryPink.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.primaryPink),
+                      ),
+                      child: const Text(
+                        'SEP-24',
+                        style: TextStyle(color: AppColors.primaryPink, fontSize: 9.5, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Advance Amount Banner
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardSurfaceElevated,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.cardBorderGlowing),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'APPROVED ADVANCE',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        '\$${widget.advanceAmount.toStringAsFixed(0)} USDC',
+                        style: const TextStyle(color: AppColors.primaryPink, fontSize: 20, fontWeight: FontWeight.w900),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Method Selection
+                const Text(
+                  'SELECT OFF-RAMP METHOD',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 9.5, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                ),
+                const SizedBox(height: 8),
+                ...List.generate(_methods.length, (index) {
+                  final bool isSelected = _selectedMethodIndex == index;
+                  final m = _methods[index];
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedMethodIndex = index),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primaryPink.withValues(alpha: 0.15) : AppColors.cardSurfaceElevated,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? AppColors.primaryPink : AppColors.cardBorder,
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(m['icon'] as IconData, size: 20, color: isSelected ? AppColors.primaryPink : AppColors.textMuted),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  m['title'] as String,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                                Text(
+                                  m['desc'] as String,
+                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 9.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            m['speed'] as String,
+                            style: const TextStyle(color: AppColors.primaryPink, fontSize: 9, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 16),
+
+                // Confirm Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _isProcessing ? null : _executeCashDraw,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryPink,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _isProcessing
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text(
+                            'Confirm & Disburse Advance',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _receiptRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+}
+
